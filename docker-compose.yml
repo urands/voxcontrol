@@ -1,0 +1,54 @@
+
+services:
+
+  pgdb:
+    image: postgres:16
+    ports:
+      - "5438:5432"
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+  voxbackend:
+    build:
+      context: ./voxbackend
+      dockerfile: ./Dockerfile
+    ports:
+      - "8005:8005"
+    command: python -m uvicorn voxcontrol.app:app --host 0.0.0.0 --port 8000
+    environment:
+      - DB_HOST=pgdb
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    depends_on:
+      - pgdb
+
+  voxcontrol:
+    build:
+      context: ./voxcontrol
+      dockerfile: Dockerfile
+    command: npm run build
+    environment:
+      - VITE_BE_URL=${VITE_BE_URL}
+     
+    volumes:
+      - ./frontend:/voxcontrol/dist
+
+
+  web:
+      image: nginx
+      ports:
+        - "80:80"
+      volumes:
+        - ./frontend:/srv/voxcontrol
+        - "./nginx/app.conf:/etc/nginx/conf.d/default.conf"
+      depends_on:
+        - voxbackend
+
+
+ 
